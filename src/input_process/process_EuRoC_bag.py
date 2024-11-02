@@ -1,30 +1,53 @@
-import pandas as pd
+import rosbag
+import numpy as np
+import cv2
 
-# Data dir format for ETH's 'The EuRoC MAV Dataset' in .bag data format
-# https://projects.asl.ethz.ch/datasets/doku.php?id=kmavvisualinertialdatasets
+def decode_ros_image_msg(msg):
+    encoding = msg.encoding
+    width = msg.width
+    height = msg.height
+    data = msg.data
 
-# defapt paths for testing
-DATA_ROOT = 'data/'
-RECORDING_PATH = 'mav03/'
-CAM0_PATH = DATA_ROOT + RECORDING_PATH + 'cam0/'
-CAM0_IMAGE_PATH = CAM0_PATH + 'data/'
-CAM0_DATA_CSV = CAM0_PATH + 'data.csv'
-CAM1_PATH = DATA_ROOT + RECORDING_PATH + 'cam1/'
-CAM1_IMAGE_PATH = CAM1_PATH + 'data/'
-CAM1_DATA_CSV = CAM1_PATH + 'data.csv'
+    # adapt to different formats
+    try:
+        if encoding == 'rgb8':
+            cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_RGB2BGR)
+        elif encoding == 'bgr8':
+            cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
+        elif encoding == 'mono8':
+            cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width))
+        elif encoding == 'mono16':
+            cv_image = np.frombuffer(data, dtype=np.uint16).reshape((height, width))
+        else:
+            print(f"Unsupported encoding type: {encoding}")
+            return None
+    except Exception as e:
+        print(f"Error decoding image data: {e}")
+        return None
 
-def read_stream(path="") -> pd.DataFrame:
-    # read image data file names from data.csv
-    cam0_data = None
+    return cv_image
 
-    if not path:
-        path = CAM0_DATA_CSV
+def stream_images_from_bag(bag_path, topic="/cam0/image_raw"):
+    # open bag file
+    with rosbag.Bag(bag_path) as bag:
+        for topic, msg, t in bag.read_messages(topics=[topic]):
+            # decode the image message
+            cv_image = decode_ros_image_msg(msg)
+            
+            # skip message if failed
+            if cv_image is None:
+                continue
+            
+            # Display the image using OpenCV
+            cv2.imshow("Image Stream", cv_image)
+            
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                break 
 
-    try :
-        cam0_data = pd.read_csv(path)
-        print(f'Data loaded from {path}')
-    except:
-        print(f'Could not load data from {path}!')
+    cv2.destroyAllWindows()
 
-    # print(cam0_data)
-    return path, cam0_data
+# Example usage
+if __name__ == "__main__":
+    bag_file_path = "path-to-bag.bag"
+    stream_images_from_bag(bag_file_path, topic="/cam0/image_raw")
