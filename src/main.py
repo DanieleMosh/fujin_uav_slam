@@ -27,13 +27,13 @@ if __name__ == "__main__":
 
     try:
         while True:
-            
-            frame_count += 1
 
             # Get the next pair of frames
             frame_pair = streamer.get_next_frame_pair()
             
             if frame_pair:
+                frame_count += 1
+
                 frame1, frame2 = frame_pair
                 # Display the two frames side-by-side or process them
                 combined = np.hstack((frame1, frame2))  # Combine frames horizontally
@@ -52,10 +52,11 @@ if __name__ == "__main__":
 
 
                 # Press 'q' to quit
-                if cv2.waitKey(10) & 0xFF == ord('q'):
+                if cv2.waitKey(30) & 0xFF == ord('q'):
                     break
             else:
-                time.sleep(0.1)  # Wait if no frames are available in the queue
+                print("SLEEP")
+                time.sleep(0.07)  # Wait if no frames are available in the queue
     finally:
         # Stop the streamer
         streamer.stop()
