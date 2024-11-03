@@ -10,7 +10,7 @@ class BagImageStreamer:
         self.topic = topic
         self.queue = mp.Queue()  # multiprocess queue to store frames
         self.stop_event = mp.Event()  # event to signal stopping
-        self.thread = mp.Process(target=self._stream_images) # process used for streaming
+        self.process = mp.Process(target=self._stream_images) # process used for streaming
 
 
     def _decode_ros_image_msg(self, msg):
@@ -27,6 +27,7 @@ class BagImageStreamer:
             elif encoding == 'bgr8':
                 cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
             elif encoding == 'mono8':
+                print("MONO8")
                 cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width))
             elif encoding == 'mono16':
                 cv_image = np.frombuffer(data, dtype=np.uint16).reshape((height, width))
@@ -42,6 +43,8 @@ class BagImageStreamer:
     def _stream_images(self):
 
         with rosbag.Bag(self.bag_path, 'r') as bag:
+            print(f"OPEN BAG {self.topic}")
+
             frame_pair = []
 
             for topic, msg, t in bag.read_messages(topics=[self.topic]):
