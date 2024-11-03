@@ -28,3 +28,18 @@ def read_stream(path="") -> pd.DataFrame:
 
     # print(cam0_data)
     return path, cam0_data
+
+    # for i in range(len(cam_data) - 1):
+    #     frame_count += 1
+
+    #     timestamp1 = cam_data.iloc[i]['#timestamp [ns]']
+    #     filename1 = cam_data.iloc[i]['filename']
+        
+    #     timestamp2 = cam_data.iloc[i + 1]['#timestamp [ns]']
+    #     filename2 = cam_data.iloc[i + 1]['filename']
+
+    #     image1_path = f"{video_path}{filename1}"
+    #     frame1 = Image.open(image1_path)
+
+    #     image2_path = f"{video_path}{filename2}"
+    #     frame2 = Image.open(image2_path)
