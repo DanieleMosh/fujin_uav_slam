@@ -27,16 +27,29 @@ if __name__ == "__main__":
 
     try:
         while True:
-            print("LOOP")
+            
+            frame_count += 1
+
             # Get the next pair of frames
             frame_pair = streamer.get_next_frame_pair()
             
             if frame_pair:
-                print("PAIR")
                 frame1, frame2 = frame_pair
                 # Display the two frames side-by-side or process them
                 combined = np.hstack((frame1, frame2))  # Combine frames horizontally
-                cv2.imshow("Frame Pair Stream", combined)
+
+                # show frame rate
+                frame_new = time.time()
+                fps = 1 / (frame_new - frame_start)
+
+                winName = "Output"
+                if frame_count % 10 == 1:
+                    winTitle = winName + " FPS: {}".format(int(fps))
+                    cv2.setWindowTitle(winName, winTitle)
+                cv2.imshow(winName, combined)
+
+                frame_start = copy.deepcopy(frame_new)
+
 
                 # Press 'q' to quit
                 if cv2.waitKey(10) & 0xFF == ord('q'):
