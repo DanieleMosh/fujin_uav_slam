@@ -27,7 +27,6 @@ if __name__ == "__main__":
 
     try:
         while True:
-
             # Get the next pair of frames
             frame_pair = streamer.get_next_frame_pair()
             
@@ -49,7 +48,6 @@ if __name__ == "__main__":
                 cv2.imshow(winName, combined)
 
                 frame_start = copy.deepcopy(frame_new)
-
 
                 # Press 'q' to quit
                 if cv2.waitKey(30) & 0xFF == ord('q'):

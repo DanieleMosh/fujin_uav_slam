@@ -27,6 +27,7 @@ class BagImageStreamer:
             elif encoding == 'bgr8':
                 cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
             elif encoding == 'mono8':
+                print("MONO8")
                 cv_image = np.frombuffer(data, dtype=np.uint8).reshape((height, width))
             elif encoding == 'mono16':
                 cv_image = np.frombuffer(data, dtype=np.uint16).reshape((height, width))
