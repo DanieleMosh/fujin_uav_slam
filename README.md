@@ -24,3 +24,6 @@ Optimize the estimated camera pose and mapping
 -  Bundle adjustment
 - Loop closure detection
 - Pose graph optimization
+
+### Run SLAM pipeline
+`python3 src/main.py -bag path/to/file.bag -topic mono/stream/topic --debug`
