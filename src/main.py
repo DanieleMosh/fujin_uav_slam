@@ -5,21 +5,36 @@ import numpy as np
 import time
 import copy
 import argparse
-
+import yaml
 
 from input_process.process_EuRoC_bag import BagImageStreamer
+from frontend.visual_odometry import VisualOdometry
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-bag", type=str)
     parser.add_argument("-topic", type=str, default="/cam0/image_raw")
+    parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     bag_path = args.bag
     bag_topic = args.topic
 
+    # debug constant from config or arg
+    DEBUG = False
+
+    with open("config/config.yaml", "r") as f:
+        debug_config = yaml.safe_load(f)["DEBUG"]
+        if args.debug or debug_config:
+            DEBUG = True
+        f.close()
+
+    # init streamer
     streamer = BagImageStreamer(bag_path=bag_path, topic=bag_topic)
+    # init visual odometry
+    vo = VisualOdometry()
+
     streamer.start() # start image stream
 
     frame_start = time.time()
@@ -47,16 +62,18 @@ if __name__ == "__main__":
                     cv2.setWindowTitle(winName, winTitle)
                 cv2.imshow(winName, combined)
 
+                # run front-end
+                vo.run_frontend_pipeline(frame_pair=frame_pair)
+
                 frame_start = copy.deepcopy(frame_new)
 
                 # Press 'q' to quit
                 if cv2.waitKey(30) & 0xFF == ord('q'):
                     break
             else:
-                print("SLEEP")
-                time.sleep(0.07)  # Wait if no frames are available in the queue
+                time.sleep(0.07) # wait if queue empty
     finally:
-        # Stop the streamer
+        # stop the streamer
         streamer.stop()
         cv2.destroyAllWindows()
 
