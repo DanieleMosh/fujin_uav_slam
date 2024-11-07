@@ -49,8 +49,14 @@ if __name__ == "__main__":
                 frame_count += 1
 
                 frame1, frame2 = frame_pair
-                # Display the two frames side-by-side or process them
-                combined = np.hstack((frame1, frame2))  # Combine frames horizontally
+                # display the two frames side-by-side or process them
+                combined = np.hstack((frame1, frame2))  # combine frames horizontally
+
+                # run front-end
+                matches, keypoints1, keypoints2 = vo.run_frontend_pipeline(frame_pair=frame_pair)
+
+                if DEBUG:
+                    combined = cv2.drawMatches(frame1, keypoints1, frame2, keypoints2, matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
 
                 # show frame rate
                 frame_new = time.time()
@@ -61,9 +67,6 @@ if __name__ == "__main__":
                     winTitle = winName + " FPS: {}".format(int(fps))
                     cv2.setWindowTitle(winName, winTitle)
                 cv2.imshow(winName, combined)
-
-                # run front-end
-                vo.run_frontend_pipeline(frame_pair=frame_pair)
 
                 frame_start = copy.deepcopy(frame_new)
 

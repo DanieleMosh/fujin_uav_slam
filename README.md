@@ -27,3 +27,8 @@ Optimize the estimated camera pose and mapping
 
 ### Run SLAM pipeline
 `python3 src/main.py -bag path/to/file.bag -topic mono/stream/topic --debug`
+
+**Args**:
+`-bag` - path to .bag file recording
+`-topic` - bag file topic containing mono video frames
+`--debug` - flag for running the SLAM in debug mode, display useful pipeline process information

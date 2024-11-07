@@ -32,7 +32,7 @@ class VisualOdometry:
     def _apply_feature_matching(self, descriptor1, descriptor2):
         return self.matcher.match(descriptor1, descriptor2)
 
-    def run_frontend_pipeline(self, frame_pair: tuple[np.array, np.array]):
+    def run_frontend_pipeline(self, frame_pair: tuple[np.array, np.array], ):
         # feature extraction
         keypoints_frame1, descriptors_frame1, keypoints_frame2, descriptors_frame2 = self._apply_feature_extraction(frame_pair[0], frame_pair[1])
 
@@ -40,3 +40,5 @@ class VisualOdometry:
         matches = self._apply_feature_matching(descriptors_frame1, descriptors_frame2)
         # sort by distance
         matches = sorted(matches, key=lambda x: x.distance)
+
+        return matches, keypoints_frame1, keypoints_frame2
