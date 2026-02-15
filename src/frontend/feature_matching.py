@@ -19,12 +19,11 @@ class FeatureMatcher(ABC):
         pass
 
 class BFMatcher(FeatureMatcher):
-    def __init__(self, cross_check=True, norm_type=cv2.NORM_L2):
+    def __init__(self, cross_check=True, norm_type=cv2.NORM_HAMMING):
         self.matcher = cv2.BFMatcher(norm_type, crossCheck=cross_check)
 
     def match(self, descriptors1, descriptors2):
-        matches = self.matcher.match(descriptors1, descriptors2)
-        return sorted(matches, key=lambda x: x.distance)
+        return self.matcher.match(descriptors1, descriptors2)
 
 class FLANNMatcher(FeatureMatcher):
     def __init__(self):

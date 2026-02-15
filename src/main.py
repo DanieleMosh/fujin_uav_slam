@@ -3,7 +3,6 @@ import cv2
 from PIL import Image
 import numpy as np
 import time
-import copy
 import argparse
 import yaml
 
@@ -49,14 +48,14 @@ if __name__ == "__main__":
                 frame_count += 1
 
                 frame1, frame2 = frame_pair
-                # display the two frames side-by-side or process them
-                combined = np.hstack((frame1, frame2))  # combine frames horizontally
 
                 # run front-end
                 matches, keypoints1, keypoints2 = vo.run_frontend_pipeline(frame_pair=frame_pair)
 
                 if DEBUG:
-                    combined = cv2.drawMatches(frame1, keypoints1, frame2, keypoints2, matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                    display = cv2.drawMatches(frame1, keypoints1, frame2, keypoints2, matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                else:
+                    display = frame1
 
                 # show frame rate
                 frame_new = time.time()
@@ -66,15 +65,15 @@ if __name__ == "__main__":
                 if frame_count % 10 == 1:
                     winTitle = winName + " FPS: {}".format(int(fps))
                     cv2.setWindowTitle(winName, winTitle)
-                cv2.imshow(winName, combined)
+                cv2.imshow(winName, display)
 
-                frame_start = copy.deepcopy(frame_new)
+                frame_start = frame_new
 
                 # Press 'q' to quit
-                if cv2.waitKey(30) & 0xFF == ord('q'):
+                if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
             else:
-                time.sleep(0.07) # wait if queue empty
+                time.sleep(0.001) # yield CPU while queue is empty
     finally:
         # stop the streamer
         streamer.stop()

@@ -2,7 +2,6 @@ import rosbag
 import numpy as np
 import cv2
 import multiprocessing as mp
-import time
 
 class BagImageStreamer:
     def __init__(self, bag_path, topic="/cam0/image_raw"):
@@ -64,10 +63,7 @@ class BagImageStreamer:
                 # if two frames are ready -> put them in the queue as a pair
                 if len(frame_pair) == 2:
                     self.queue.put(tuple(frame_pair))
-                    frame_pair.pop(0)  # keep only the last frame
-
-                # add stream latency
-                time.sleep(0.05)
+                    frame_pair = [frame_pair[1]]  # keep only the last frame
 
     # start image streaming in a separate process
     def start(self):
@@ -78,7 +74,7 @@ class BagImageStreamer:
         self.process.join()
 
     def get_next_frame_pair(self):
-        if not self.queue.empty():
-            return self.queue.get()
-        else:
+        try:
+            return self.queue.get(timeout=0.001)
+        except Exception:
             return None
