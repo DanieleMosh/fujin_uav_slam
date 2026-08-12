@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import cv2
 from typing import Type
 
 from frontend.feature_matching import FeatureMatcher, BFMatcher, FLANNMatcher
@@ -51,13 +52,25 @@ def triangulate(pose1, pose2, pts1, pts2):
     return ret
 
 class VisualOdometry:
-    def __init__(self, 
+    def __init__(self,
                  extractor: Type[FeatureExtractor]=ORBFeatureExtractor,
                  matcher: Type[FeatureMatcher]=BFMatcher,
-                 logging: bool = False
+                 logging: bool = False,
+                 render_queue=None
                  ):
         self.extractor = extractor()
         self.matcher = matcher()
+
+        # EuRoC cam0 intrinsics
+        self.K = np.array([
+            [458.654, 0.0,     367.215],
+            [0.0,     457.296, 248.375],
+            [0.0,     0.0,     1.0]
+        ])
+        self.K_inv = np.linalg.inv(self.K)
+
+        self.current_pose = np.eye(4)
+        self.render_queue = render_queue
 
     def _apply_feature_extraction(self, frame1, frame2):
         return self.extractor.detect_and_compute(frame1, frame2)
@@ -65,30 +78,85 @@ class VisualOdometry:
     def _apply_feature_matching(self, descriptor1, descriptor2):
         return self.matcher.match(descriptor1, descriptor2)
 
-    def run_frontend_pipeline(self, frame_pair: tuple[np.array, np.array], ):
+    def _estimate_motion(self, matches, kp1, kp2):
+        if len(matches) < 8:
+            return None
+
+        pts1 = np.float32([kp1[m.queryIdx].pt for m in matches])
+        pts2 = np.float32([kp2[m.trainIdx].pt for m in matches])
+
+        F, inlier_mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC)
+        if F is None or inlier_mask is None:
+            return None
+
+        inlier_mask = inlier_mask.ravel().astype(bool)
+        pts1_inlier = pts1[inlier_mask]
+        pts2_inlier = pts2[inlier_mask]
+
+        if len(pts1_inlier) < 8:
+            return None
+
+        E = self.K.T @ F @ self.K
+        _, R, t, _ = cv2.recoverPose(E, pts1_inlier, pts2_inlier, self.K)
+
+        return R, t, pts1_inlier, pts2_inlier
+
+    def _triangulate_points(self, R, t, pts1_inlier, pts2_inlier):
+        # Build relative pose (frame2 w.r.t. frame1)
+        relative_pose = np.eye(4)
+        relative_pose[:3, :3] = R
+        relative_pose[:3, 3] = t.ravel()
+
+        # Normalize pixel coords to camera coords
+        pts1_norm = (self.K_inv @ add_ones(pts1_inlier).T).T[:, :2]
+        pts2_norm = (self.K_inv @ add_ones(pts2_inlier).T).T[:, :2]
+
+        # Triangulate using existing SVD-based function
+        pose1 = np.eye(4)
+        pts4d = triangulate(pose1, relative_pose, pts1_norm, pts2_norm)
+
+        # Dehomogenize
+        pts4d /= pts4d[:, 3:]
+
+        # Filter: keep points in front of camera and not at infinity
+        good = (pts4d[:, 2] > 0) & (np.abs(pts4d[:, 3]) > 1e-6)
+        pts3d = pts4d[good, :3]
+
+        # Transform to world coordinates
+        world_pts = (self.current_pose @ np.hstack([pts3d, np.ones((len(pts3d), 1))]).T).T[:, :3]
+
+        return world_pts
+
+    def run_frontend_pipeline(self, frame_pair: tuple[np.array, np.array]):
         # feature extraction
         keypoints_frame1, descriptors_frame1, keypoints_frame2, descriptors_frame2 = self._apply_feature_extraction(frame_pair[0], frame_pair[1])
 
         # feature matching
         matches = self._apply_feature_matching(descriptors_frame1, descriptors_frame2)
 
-        # Extract matched keypoints
-        # pts1 = np.float32([keypoints1[m.queryIdx].pt for m in matches])
-        # pts2 = np.float32([keypoints2[m.trainIdx].pt for m in matches])
-        
-        # # Camera intrinsic parameters (example values, replace with your camera's calibration data)
-        # K = np.array([[fx, 0, cx],
-        #             [0, fy, cy],
-        #             [0, 0, 1]])
-        
-        # # Compute the Fundamental matrix using RANSAC
-        # F, inliers = cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC)
-        
-        # # Compute the Essential matrix using the camera's intrinsic parameters 
-        # E = K.T @ F @ K
-        
-        # # Decompose the Essential matrix to get R and t
-        # _, R, t, mask = cv2.recoverPose(E, pts1_inliers, pts2_inliers, K)
+        # motion estimation
+        result = self._estimate_motion(matches, keypoints_frame1, keypoints_frame2)
+        if result is not None:
+            R, t, pts1_inlier, pts2_inlier = result
+
+            # triangulate 3D points
+            world_pts = self._triangulate_points(R, t, pts1_inlier, pts2_inlier)
+
+            # accumulate pose: current_pose = current_pose @ inv(relative)
+            relative_pose = np.eye(4)
+            relative_pose[:3, :3] = R
+            relative_pose[:3, 3] = t.ravel()
+            self.current_pose = self.current_pose @ np.linalg.inv(relative_pose)
+
+            # push to renderer
+            if self.render_queue is not None:
+                try:
+                    self.render_queue.put_nowait({
+                        'pose': self.current_pose.copy(),
+                        'points': world_pts
+                    })
+                except Exception:
+                    pass  # queue full, drop frame
 
         return matches, keypoints_frame1, keypoints_frame2
     

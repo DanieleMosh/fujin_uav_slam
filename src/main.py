@@ -1,6 +1,4 @@
-import pandas as pd
 import cv2
-from PIL import Image
 import numpy as np
 import time
 import argparse
@@ -8,6 +6,7 @@ import yaml
 
 from input_process.process_EuRoC_bag import BagImageStreamer
 from frontend.visual_odometry import VisualOdometry
+from mapping.renderer import SlamRenderer
 
 if __name__ == "__main__":
 
@@ -15,6 +14,8 @@ if __name__ == "__main__":
     parser.add_argument("-bag", type=str)
     parser.add_argument("-topic", type=str, default="/cam0/image_raw")
     parser.add_argument('--debug', default=False, action=argparse.BooleanOptionalAction)
+    parser.add_argument('--no-render', default=False, action='store_true',
+                        help='disable the 3D OpenGL viewer')
     args = parser.parse_args()
 
     bag_path = args.bag
@@ -29,10 +30,20 @@ if __name__ == "__main__":
             DEBUG = True
         f.close()
 
+    # init renderer
+    renderer = None
+    render_queue = None
+    if not args.no_render:
+        renderer = SlamRenderer()
+        render_queue = renderer.get_queue()
+
     # init streamer
     streamer = BagImageStreamer(bag_path=bag_path, topic=bag_topic)
     # init visual odometry
-    vo = VisualOdometry()
+    vo = VisualOdometry(render_queue=render_queue)
+
+    if renderer is not None:
+        renderer.start()
 
     streamer.start() # start image stream
 
@@ -77,6 +88,8 @@ if __name__ == "__main__":
     finally:
         # stop the streamer
         streamer.stop()
+        if renderer is not None:
+            renderer.stop()
         cv2.destroyAllWindows()
 
     #     img1_cv = cv2.cvtColor(np.array(frame1), cv2.COLOR_RGB2BGR)
