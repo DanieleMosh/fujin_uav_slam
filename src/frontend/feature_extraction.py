@@ -21,8 +21,8 @@ class FeatureExtractor(ABC):
 # feature extractor using ORB
 class ORBFeatureExtractor(FeatureExtractor):
 
-    def __init__(self):
-        self.orb = cv2.ORB_create(nfeatures=200)
+    def __init__(self, nfeatures=2000):
+        self.orb = cv2.ORB_create(nfeatures=nfeatures)
 
     def detect_and_compute(self, frame1, frame2):
         keypoints_frame1, descriptors_frame1 = self.orb.detectAndCompute(frame1, None)
