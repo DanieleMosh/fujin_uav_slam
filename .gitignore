@@ -166,3 +166,5 @@ data/
 
 .DS_Store
 __pycache__
+# Gaussian mapping outputs
+gaussian_map*.ply
